@@ -1,10 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import sys
 import time
 import psutil
-import os
-import tracemalloc
 
 # Gap penalty
 delta = 30
@@ -120,25 +116,22 @@ def backtrack(X, Y, back):
             j -= 1
 
     return ''.join(reversed(align_X)), ''.join(reversed(align_Y))
-    
 
+def process_memory():
+    process = psutil.Process()
+    memory_info = process.memory_info()
+    memory_consumed = int(memory_info.rss/1024) 
+    return memory_consumed
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python script.py <path to test file>")
-        return
-
     file_path = sys.argv[1]
 
     # Generate strings
     X, Y = read_and_generate(file_path)
 
-#    print("Generated lengths:", len(X), len(Y))
-
-    # Runtime / Mem Usage - Measure BEFORE
+    # Runtime Measure BEFORE
     start_time = time.perf_counter_ns()
-    tracemalloc.start()
 
     # Run DP
     dp, back = needleman_wunsch(X, Y)
@@ -146,22 +139,15 @@ def main():
     # Backtrack
     aligned_X, aligned_Y = backtrack(X, Y, back)
 
-    # Measure AFTER
-    current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+    end_time = time.perf_counter_ns() #time of program running
 
+    MCost = dp[len(X)][len(Y)]
+    Alignment = (aligned_X, aligned_Y)
+    Runtime = (end_time - start_time) / 1_000_000
+    MemUsuage = process_memory()
 
-    end_time = time.perf_counter_ns()
-
-    print("\nMinimum Cost:", dp[len(X)][len(Y)])
-    print("\nAlignment:")
-    print(aligned_X)
-    print(aligned_Y)
-    print("\nPerformance Metrics:")
-    print(f"Runtime: {(end_time - start_time)/1000:.3f} ms")
-    print(f"Current memory: {current / 1024:.2f} KB")
-    print(f"Peak memory: {peak / 1024:.2f} KB")
-    print(f"Memory Usage: {(peak - current) / 1024:.2f} KB")
+    with open(sys.argv[2], 'w', encoding='utf-8') as f:
+        f.write(f"Cost of Alignment: {MCost}\nFirst String: {Alignment[0]}\nSecond String: {Alignment[1]} \nRuntime: {Runtime:.2f} ms\nMemory Usage: {MemUsuage:.2f} KB\n")
 
 if __name__ == "__main__":
     main()
